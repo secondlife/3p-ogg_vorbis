@@ -42,14 +42,7 @@ case "$AUTOBUILD_PLATFORM" in
             # $1 is the build directory in which to find the result
             # $2 is the basename of the .lib file we expect to find there
             cp "win32/$1/$2.lib" "$stage/lib/release/"
-            # This is odd, but empirically even VS 2017 (aka vc150) produces a
-            # vc120.pdb file into $1. Since the string "vc120" isn't obviously
-            # embedded in either the .sln file or the various .vcxproj files,
-            # we didn't dig further to try to figure out how to change it
-            # there. (If we were going to change it there, we'd want to change
-            # it to match the .lib name itself, instead of having to rename it
-            # in this copy command.)
-            cp "win32/$1/vc120.pdb" "$stage/lib/release/$2.pdb"
+            cp "win32/$1/$2.pdb" "$stage/lib/release/$2.pdb"
         }
 
         pushd "$OGG_SOURCE_DIR"
