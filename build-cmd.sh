@@ -35,6 +35,7 @@ source_environment_tempfile="$stage/source_environment.sh"
 
 build=${AUTOBUILD_BUILD_ID:=0}
 echo "${OGG_VERSION}-${VORBIS_VERSION}.${build}" > "${stage}/VERSION.txt"
+echo "1.2.3.4" > "${stage}/VERSION.txt"
 
 case "$AUTOBUILD_PLATFORM" in
     windows*)
@@ -49,7 +50,7 @@ case "$AUTOBUILD_PLATFORM" in
             # there. (If we were going to change it there, we'd want to change
             # it to match the .lib name itself, instead of having to rename it
             # in this copy command.)
-            cp "win32/$1/vc120.pdb" "$stage/lib/release/$2.pdb"
+            #cp "win32/$1/vc120.pdb" "$stage/lib/release/$2.pdb"
         }
 
         pushd "$OGG_SOURCE_DIR"
@@ -120,3 +121,4 @@ mkdir -p "$stage/LICENSES"
 pushd "$OGG_SOURCE_DIR"
     cp COPYING "$stage/LICENSES/ogg-vorbis.txt"
 popd
+
