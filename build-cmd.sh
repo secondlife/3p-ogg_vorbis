@@ -38,7 +38,6 @@ source "$(dirname "$AUTOBUILD_VARIABLES_FILE")/functions"
 
 build=${AUTOBUILD_BUILD_ID:=0}
 echo "${OGG_VERSION}-${VORBIS_VERSION}.${build}" > "${stage}/VERSION.txt"
-echo "1.2.3.4" > "${stage}/VERSION.txt"
 
 case "$AUTOBUILD_PLATFORM" in
     windows*)
@@ -84,7 +83,7 @@ case "$AUTOBUILD_PLATFORM" in
         opts="-arch $AUTOBUILD_CONFIGURE_ARCH $LL_BUILD_RELEASE"
         plainopts="$(remove_cxxstd $opts)"
         export CFLAGS="$plainopts" 
-        export CPPFLAGS="$opts" 
+        export CXXFLAGS="$opts" 
         export LDFLAGS="$plainopts"
         ./configure --prefix="$stage"
         make
