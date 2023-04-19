@@ -33,6 +33,9 @@ source_environment_tempfile="$stage/source_environment.sh"
 "$autobuild" source_environment > "$source_environment_tempfile"
 . "$source_environment_tempfile"
 
+# remove_cxxstd
+source "$(dirname "$AUTOBUILD_VARIABLES_FILE")/functions"
+
 build=${AUTOBUILD_BUILD_ID:=0}
 echo "${OGG_VERSION}-${VORBIS_VERSION}.${build}" > "${stage}/VERSION.txt"
 echo "1.2.3.4" > "${stage}/VERSION.txt"
@@ -79,9 +82,10 @@ case "$AUTOBUILD_PLATFORM" in
     darwin*)
         pushd "$OGG_SOURCE_DIR"
         opts="-arch $AUTOBUILD_CONFIGURE_ARCH $LL_BUILD_RELEASE"
-        export CFLAGS="$opts" 
+        plainopts="$(remove_cxxstd $opts)"
+        export CFLAGS="$plainopts" 
         export CPPFLAGS="$opts" 
-        export LDFLAGS="$opts"
+        export LDFLAGS="$plainopts"
         ./configure --prefix="$stage"
         make
         make install
@@ -100,14 +104,15 @@ case "$AUTOBUILD_PLATFORM" in
     linux*)
         pushd "$OGG_SOURCE_DIR"
         opts="-m$AUTOBUILD_ADDRSIZE $LL_BUILD_RELEASE"
-        CFLAGS="$opts" CXXFLAGS="$opts" ./configure --prefix="$stage"
+        plainopts="$(remove_cxxstd $opts)"
+        CFLAGS="$plainopts" CXXFLAGS="$opts" ./configure --prefix="$stage"
         make
         make install
         popd
         
         pushd "$VORBIS_SOURCE_DIR"
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"$stage/lib"
-        CFLAGS="$opts" CXXFLAGS="$opts" ./configure --prefix="$stage"
+        CFLAGS="$plainopts" CXXFLAGS="$opts" ./configure --prefix="$stage"
         make
         make install
         popd
