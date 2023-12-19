@@ -104,6 +104,7 @@ case "$AUTOBUILD_PLATFORM" in
         pushd "$OGG_SOURCE_DIR"
         opts="-m$AUTOBUILD_ADDRSIZE $LL_BUILD_RELEASE"
         plainopts="$(remove_cxxstd $opts)"
+        autoreconf -fi
         CFLAGS="$plainopts" CXXFLAGS="$opts" ./configure --prefix="$stage"
         make
         make install
@@ -111,6 +112,7 @@ case "$AUTOBUILD_PLATFORM" in
         
         pushd "$VORBIS_SOURCE_DIR"
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"$stage/lib"
+        autoreconf -fi
         CFLAGS="$plainopts" CXXFLAGS="$opts" ./configure --prefix="$stage"
         make
         make install
