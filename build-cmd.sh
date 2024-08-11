@@ -56,25 +56,15 @@ mkdir -p "$stage/lib/release"
 
 case "$AUTOBUILD_PLATFORM" in
     windows*)
+        opts="$(replace_switch /Zi /Z7 $LL_BUILD_RELEASE)"
+        plainopts="$(remove_switch /GR $(remove_cxxstd $opts))"
+
         pushd "$OGG_SOURCE_DIR"
-            mkdir -p "build_debug"
-            pushd "build_debug"
+            mkdir -p "build"
+            pushd "build"
                 cmake .. -G "Ninja Multi-Config" -DBUILD_SHARED_LIBS=OFF \
-                    -DBUILD_TESTING=ON \
-                    -DCMAKE_INSTALL_PREFIX="$(cygpath -m $stage)/ogg_debug"
-
-                cmake --build . --config Debug
-                cmake --install . --config Debug
-
-                # conditionally run unit tests
-                if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
-                    ctest -C Debug
-                fi
-            popd
-
-            mkdir -p "build_release"
-            pushd "build_release"
-                cmake .. -G "Ninja Multi-Config" -DBUILD_SHARED_LIBS=OFF \
+                    -DCMAKE_C_FLAGS="$plainopts" \
+                    -DCMAKE_CXX_FLAGS="$opts" \
                     -DBUILD_TESTING=ON \
                     -DCMAKE_INSTALL_PREFIX="$(cygpath -m $stage)/ogg_release"
 
@@ -89,34 +79,17 @@ case "$AUTOBUILD_PLATFORM" in
         popd
 
         # copy ogg libs
-        cp ${stage}/ogg_debug/lib/ogg.lib ${stage}/lib/debug/libogg.lib
         cp ${stage}/ogg_release/lib/ogg.lib ${stage}/lib/release/libogg.lib
 
         # copy ogg headers
         cp -a $stage/ogg_release/include/* $stage/include/
 
         pushd "$VORBIS_SOURCE_DIR"
-            mkdir -p "build_debug"
-            pushd "build_debug"
+            mkdir -p "build"
+            pushd "build"
                 cmake .. -G "Ninja Multi-Config" \
-                    -DOGG_LIBRARIES="$(cygpath -m $stage)/lib/debug/libogg.lib" \
-                    -DOGG_INCLUDE_DIRS="$(cygpath -m $stage)/include" \
-                    -DBUILD_SHARED_LIBS=OFF \
-                    -DBUILD_TESTING=ON \
-                    -DCMAKE_INSTALL_PREFIX="$(cygpath -m $stage)/vorbis_debug"
-
-                cmake --build . --config Debug
-                cmake --install . --config Debug
-
-                # conditionally run unit tests
-                if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
-                    ctest -C Debug
-                fi
-            popd
-
-            mkdir -p "build_release"
-            pushd "build_release"
-                cmake .. -G "Ninja Multi-Config" \
+                    -DCMAKE_C_FLAGS="$plainopts" \
+                    -DCMAKE_CXX_FLAGS="$opts" \
                     -DOGG_LIBRARIES="$(cygpath -m $stage)/lib/release/libogg.lib" \
                     -DOGG_INCLUDE_DIRS="$(cygpath -m $stage)/include" \
                     -DBUILD_SHARED_LIBS=OFF \
@@ -134,9 +107,6 @@ case "$AUTOBUILD_PLATFORM" in
         popd
 
         # copy vorbis libs
-        cp ${stage}/vorbis_debug/lib/vorbis.lib ${stage}/lib/debug/libvorbis.lib
-        cp ${stage}/vorbis_debug/lib/vorbisenc.lib ${stage}/lib/debug/libvorbisenc.lib
-        cp ${stage}/vorbis_debug/lib/vorbisfile.lib ${stage}/lib/debug/libvorbisfile.lib
         cp ${stage}/vorbis_release/lib/vorbis.lib ${stage}/lib/release/libvorbis.lib
         cp ${stage}/vorbis_release/lib/vorbisenc.lib ${stage}/lib/release/libvorbisenc.lib
         cp ${stage}/vorbis_release/lib/vorbisfile.lib ${stage}/lib/release/libvorbisfile.lib
@@ -145,6 +115,9 @@ case "$AUTOBUILD_PLATFORM" in
         cp -a $stage/vorbis_release/include/* $stage/include/
     ;;
     darwin*)
+        # Setup deploy target
+        export MACOSX_DEPLOYMENT_TARGET="$LL_BUILD_DARWIN_DEPLOY_TARGET"
+
         # Setup build flags
         opts="${TARGET_OPTS:--arch $AUTOBUILD_CONFIGURE_ARCH $LL_BUILD_RELEASE}"
         plainopts="$(remove_cxxstd $opts)"
@@ -156,6 +129,7 @@ case "$AUTOBUILD_PLATFORM" in
                 cmake .. -GNinja -DCMAKE_BUILD_TYPE="Release" -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=ON \
                     -DCMAKE_C_FLAGS="$plainopts" \
                     -DCMAKE_OSX_ARCHITECTURES:STRING=x86_64 \
+                    -DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET} \
                     -DCMAKE_MACOSX_RPATH=YES \
                     -DCMAKE_INSTALL_PREFIX="$stage/ogg_release_x86"
 
@@ -204,6 +178,7 @@ case "$AUTOBUILD_PLATFORM" in
                     -DOGG_LIBRARIES="${stage}/lib/release/libogg.a" -DOGG_INCLUDE_DIRS="$stage/include" \
                     -DCMAKE_C_FLAGS="$plainopts" \
                     -DCMAKE_OSX_ARCHITECTURES:STRING=x86_64 \
+                    -DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET} \
                     -DCMAKE_MACOSX_RPATH=YES \
                     -DCMAKE_INSTALL_PREFIX="$stage/vorbis_release_x86"
 
