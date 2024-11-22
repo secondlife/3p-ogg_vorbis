@@ -9,11 +9,11 @@ set -e
 # complain about unset env variables
 set -u
 
-if [ -z "$AUTOBUILD" ] ; then 
+if [ -z "$AUTOBUILD" ] ; then
     exit 1
 fi
 
-if [ "$OSTYPE" = "cygwin" ] ; then
+if [[ "$OSTYPE" == "cygwin" || "$OSTYPE" == "msys" ]] ; then
     autobuild="$(cygpath -u $AUTOBUILD)"
 else
     autobuild="$AUTOBUILD"
@@ -123,105 +123,72 @@ case "$AUTOBUILD_PLATFORM" in
         plainopts="$(remove_cxxstd $opts)"
 
         pushd "$OGG_SOURCE_DIR"
-            mkdir -p "build_release_x86"
-            pushd "build_release_x86"
-                CFLAGS="$plainopts" \
-                cmake .. -GNinja -DCMAKE_BUILD_TYPE="Release" -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=ON \
-                    -DCMAKE_C_FLAGS="$plainopts" \
-                    -DCMAKE_OSX_ARCHITECTURES:STRING=x86_64 \
-                    -DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET} \
-                    -DCMAKE_MACOSX_RPATH=YES \
-                    -DCMAKE_INSTALL_PREFIX="$stage/ogg_release_x86"
+            for arch in x86_64 arm64 ; do
+                ARCH_ARGS="-arch $arch"
+                cc_opts="${TARGET_OPTS:-$ARCH_ARGS $LL_BUILD_RELEASE}"
+                cc_opts="$(remove_cxxstd $cc_opts)"
+                ld_opts="$ARCH_ARGS"
 
-                cmake --build . --config Release
-                cmake --install . --config Release
+                mkdir -p "build_$arch"
+                pushd "build_$arch"
+                    CFLAGS="$cc_opts" \
+                    LDFLAGS="$ld_opts" \
+                    cmake .. -GNinja -DCMAKE_BUILD_TYPE="Release" -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=ON \
+                        -DCMAKE_C_FLAGS="$cc_opts" \
+                        -DCMAKE_INSTALL_PREFIX="$stage" \
+                        -DCMAKE_INSTALL_LIBDIR="$stage/lib/release/$arch" \
+                        -DCMAKE_OSX_ARCHITECTURES:STRING="$arch" \
+                        -DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET} \
+                        -DCMAKE_MACOSX_RPATH=YES
 
-                # conditionally run unit tests
-                if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
-                    ctest -C Release
-                fi
-            popd
+                    cmake --build . --config Release
+                    cmake --install . --config Release
 
-            # mkdir -p "build_release_arm64"
-            # pushd "build_release_arm64"
-            #     CFLAGS="$C_OPTS_ARM64" \
-            #     LDFLAGS="$LINK_OPTS_ARM64" \
-            #     cmake .. -G Ninja -DCMAKE_BUILD_TYPE="Release" -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=ON \
-            #         -DCMAKE_C_FLAGS="$C_OPTS_ARM64" \
-            #         -DCMAKE_OSX_ARCHITECTURES:STRING=arm64 \
-            #         -DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET} \
-            #         -DCMAKE_MACOSX_RPATH=YES \
-            #         -DCMAKE_INSTALL_PREFIX="$stage/ogg_release_arm64"
-
-            #     cmake --build . --config Release
-            #     cmake --install . --config Release
-
-            #     # conditionally run unit tests
-            #     if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
-            #         ctest -C Release
-            #     fi
-            # popd
+                    # conditionally run unit tests
+                    if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
+                        ctest -C Release
+                    fi
+                popd
+            done
 
             # # create fat libraries
-            # lipo -create ${stage}/ogg_release_x86/lib/libogg.a ${stage}/ogg_release_arm64/lib/libogg.a -output ${stage}/lib/release/libogg.a
-
-            # copy files
-            cp -a ${stage}/ogg_release_x86/lib/libogg.a ${stage}/lib/release/libogg.a
-            cp -a $stage/ogg_release_x86/include/* $stage/include/
+            lipo -create -output ${stage}/lib/release/libogg.a ${stage}/lib/release/x86_64/libogg.a ${stage}/lib/release/arm64/libogg.a
         popd
 
         pushd "$VORBIS_SOURCE_DIR"
-            mkdir -p "build_release_x86"
-            pushd "build_release_x86"
-                CFLAGS="$plainopts" \
-                cmake .. -G Ninja -DCMAKE_BUILD_TYPE="Release" -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=ON \
-                    -DOGG_LIBRARIES="${stage}/lib/release/libogg.a" -DOGG_INCLUDE_DIRS="$stage/include" \
-                    -DCMAKE_C_FLAGS="$plainopts" \
-                    -DCMAKE_OSX_ARCHITECTURES:STRING=x86_64 \
-                    -DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET} \
-                    -DCMAKE_MACOSX_RPATH=YES \
-                    -DCMAKE_INSTALL_PREFIX="$stage/vorbis_release_x86"
+            for arch in x86_64 arm64 ; do
+                ARCH_ARGS="-arch $arch"
+                cc_opts="${TARGET_OPTS:-$ARCH_ARGS $LL_BUILD_RELEASE}"
+                cc_opts="$(remove_cxxstd $cc_opts)"
+                ld_opts="$ARCH_ARGS"
 
-                cmake --build . --config Release
-                cmake --install . --config Release
+                mkdir -p "build_$arch"
+                pushd "build_$arch"
+                    CFLAGS="$cc_opts" \
+                    LDFLAGS="$ld_opts" \
+                    cmake .. -G Ninja -DCMAKE_BUILD_TYPE="Release" -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=ON \
+                        -DOGG_LIBRARIES="${stage}/lib/release/libogg.a" -DOGG_INCLUDE_DIRS="$stage/include" \
+                        -DCMAKE_C_FLAGS="$cc_opts" \
+                        -DCMAKE_INSTALL_PREFIX="$stage" \
+                        -DCMAKE_INSTALL_LIBDIR="$stage/lib/release/$arch" \
+                        -DCMAKE_OSX_ARCHITECTURES:STRING="$arch" \
+                        -DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET} \
+                        -DCMAKE_MACOSX_RPATH=YES
 
-                # conditionally run unit tests
-                if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
-                    ctest -C Release
-                fi
-            popd
+                    cmake --build . --config Release
+                    cmake --install . --config Release
 
-            # mkdir -p "build_release_arm64"
-            # pushd "build_release_arm64"
-            #     CFLAGS="$C_OPTS_ARM64" \
-            #     LDFLAGS="$LINK_OPTS_ARM64" \
-            #     cmake .. -G Ninja -DCMAKE_BUILD_TYPE="Release" -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=ON \
-            #         -DOGG_LIBRARIES="${stage}/lib/release/libogg.a" -DOGG_INCLUDE_DIRS="$stage/include" \
-            #         -DCMAKE_C_FLAGS="$C_OPTS_ARM64" \
-            #         -DCMAKE_OSX_ARCHITECTURES:STRING=arm64 \
-            #         -DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET} \
-            #         -DCMAKE_MACOSX_RPATH=YES \
-            #         -DCMAKE_INSTALL_PREFIX="$stage/vorbis_release_arm64"
+                    # conditionally run unit tests
+                    if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
+                        ctest -C Release
+                    fi
+                popd
+            done
 
-            #     cmake --build . --config Release
-            #     cmake --install . --config Release
-
-            #     # conditionally run unit tests
-            #     if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
-            #        ctest -C Release
-            #     fi
-            # popd
-
-            # # create fat libraries
-            # lipo -create ${stage}/vorbis_release_x86/lib/libvorbis.a ${stage}/vorbis_release_arm64/lib/libvorbis.a -output ${stage}/lib/release/libvorbis.a
-            # lipo -create ${stage}/vorbis_release_x86/lib/libvorbisenc.a ${stage}/vorbis_release_arm64/lib/libvorbisenc.a -output ${stage}/lib/release/libvorbisenc.a
-            # lipo -create ${stage}/vorbis_release_x86/lib/libvorbisfile.a ${stage}/vorbis_release_arm64/lib/libvorbisfile.a -output ${stage}/lib/release/libvorbisfile.a
-
-            # copy headers
-            cp -a $stage/vorbis_release_x86/lib/libvorbis.a $stage/lib/release/libvorbis.a
-            cp -a $stage/vorbis_release_x86/lib/libvorbisenc.a $stage/lib/release/libvorbisenc.a
-            cp -a $stage/vorbis_release_x86/lib/libvorbisfile.a $stage/lib/release/libvorbisfile.a
-            cp -a $stage/vorbis_release_x86/include/* $stage/include/
+            # create universal libraries
+            lipo -create -output ${stage}/lib/release/libvorbis.a ${stage}/lib/release/x86_64/libvorbis.a ${stage}/lib/release/arm64/libvorbis.a
+            lipo -create -output ${stage}/lib/release/libvorbisenc.a ${stage}/lib/release/x86_64/libvorbisenc.a ${stage}/lib/release/arm64/libvorbisenc.a
+            lipo -create -output ${stage}/lib/release/libvorbisfile.a ${stage}/lib/release/x86_64/libvorbisfile.a ${stage}/lib/release/arm64/libvorbisfile.a
         popd
      ;;
     linux*)
@@ -253,7 +220,7 @@ case "$AUTOBUILD_PLATFORM" in
             # copy headers
             cp -a ${stage}/ogg_release/include/* ${stage}/include/
         popd
-        
+
         pushd "$VORBIS_SOURCE_DIR"
             mkdir -p "build"
             pushd "build"
